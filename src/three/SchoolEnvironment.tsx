@@ -1,10 +1,10 @@
-import { memo, useMemo } from 'react';
+import React, { memo, useMemo } from 'react';
 import * as THREE from 'three';
 import { WALLS, FURNITURE, INTERACTIVE_OBJECTS } from '../data/school';
 
 function FloorTiles() {
   const tiles = useMemo(() => {
-    const t: JSX.Element[] = [];
+    const t: React.JSX.Element[] = [];
     for (let x = -16; x <= 12; x += 2) {
       for (let z = -22; z <= 34; z += 2) {
         const dark = (x + z) % 4 === 0;
@@ -32,7 +32,7 @@ function FloorTiles() {
 
 function Ceiling() {
   const lights = useMemo(() => {
-    const l: JSX.Element[] = [];
+    const l: React.JSX.Element[] = [];
     for (let z = -18; z <= 18; z += 6) {
       l.push(
         <group key={`cl-${z}`}>
@@ -402,7 +402,7 @@ function FurnitureMesh({ item }: { item: typeof FURNITURE[number] }) {
 }
 
 function CorridorWindows() {
-  const windows: JSX.Element[] = [];
+  const windows: React.JSX.Element[] = [];
   for (let z = -18; z <= 18; z += 4) {
     windows.push(
       <WindowMesh key={`wl-${z}`} position={[-2.08, 2, z]} rotation={[0, Math.PI / 2, 0]} />,

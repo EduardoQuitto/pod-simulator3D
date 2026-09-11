@@ -1,7 +1,6 @@
 import { useReducer, useCallback } from 'react';
 import type { GameState, Resources, GameStage } from '../types/game';
 import { TIME_SLOTS } from '../data/school';
-import { getRandomEvent } from '../data/events';
 import { determineEnding } from '../data/endings';
 
 const INITIAL_RESOURCES: Resources = {

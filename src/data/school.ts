@@ -14,8 +14,6 @@ export const STAGE_NAMES: Record<number, string> = {
 const W = '#e8e4df';
 const W2 = '#ddd8d0';
 const W3 = '#d4cfc5';
-const D = '#7a5230';
-const GLASS = '#b8d4e8';
 
 export const WALLS: WallDef[] = [
   // ═══════ CORREDOR PRINCIPAL (x:-2..2, z:-20..20) ═══════

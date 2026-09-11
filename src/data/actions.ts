@@ -1,8 +1,7 @@
-import type { ActionType } from '../types/game';
 import type { Resources } from '../types/game';
 
 export interface ActionDef {
-  id: ActionType;
+  id: string;
   label: string;
   description: string;
   cost?: number;
@@ -14,7 +13,7 @@ export interface ActionDef {
 
 export function getAvailableActions(
   money: number,
-  liquid: number,
+  _liquid: number,
   dependency: number,
   hasStopped: boolean
 ): ActionDef[] {
@@ -28,11 +27,10 @@ export function getAvailableActions(
         health: -4,
         anxiety: -10,
         energy: 3,
-        liquid: -15,
       },
       feedback: 'Você usou. A ansiedade baixou... por agora.',
-      disabled: liquid <= 0 || hasStopped,
-      disabledReason: liquid <= 0 ? 'Sem líquido' : 'Você parou',
+      disabled: hasStopped,
+      disabledReason: 'Você parou',
     },
     {
       id: 'notUse',
@@ -52,13 +50,11 @@ export function getAvailableActions(
       cost: 15,
       baseEffect: {
         money: -15,
-        liquid: 80,
         dependency: 5,
       },
       feedback: 'Novo pod comprado. O ciclo continua...',
       disabled: money < 15 || hasStopped,
-      disabledReason:
-        money < 15 ? 'Dinheiro insuficiente' : 'Você parou',
+      disabledReason: money < 15 ? 'Dinheiro insuficiente' : 'Você parou',
     },
     {
       id: 'save',

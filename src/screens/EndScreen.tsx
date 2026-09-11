@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import type { GameState, Ending, Stats } from '../types/game';
-import { TIME_SLOTS } from '../data/school';
 
 interface EndScreenProps {
   state: GameState;

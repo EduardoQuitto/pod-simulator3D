@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { SchoolEnvironment } from '../three/SchoolEnvironment';
 import { NPCGroup } from '../three/NPCGroup';
