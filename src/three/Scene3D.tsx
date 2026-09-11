@@ -17,6 +17,15 @@ interface Scene3DProps {
   onObjectiveReached?: () => void;
 }
 
+interface InteractionDetectorProps {
+  onNearNPC: (npc: string | null) => void;
+  onNearObject: (obj: string | null, prompt: string | null) => void;
+  onInteract: () => void;
+  objectiveLocation?: [number, number, number];
+  objectiveNpc?: string;
+  onObjectiveReached?: () => void;
+}
+
 function InteractionDetector({
   onNearNPC,
   onNearObject,
@@ -24,7 +33,7 @@ function InteractionDetector({
   objectiveLocation,
   objectiveNpc,
   onObjectiveReached,
-}: Scene3DProps) {
+}: InteractionDetectorProps) {
   const { camera } = useThree();
   const keysRef = useRef<Record<string, boolean>>({});
   const lastInteract = useRef(0);
