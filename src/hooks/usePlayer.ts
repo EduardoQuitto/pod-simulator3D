@@ -57,6 +57,9 @@ export function usePlayer(walls: WallDef[], enabled: boolean) {
   const targetPos = useRef(new THREE.Vector3(0, PLAYER_HEIGHT, -18));
   const targetYaw = useRef(0);
   const targetPitch = useRef(0);
+  const headBobPhase = useRef(0);
+  const headBobIntensity = useRef(0);
+  const prevMoving = useRef(false);
 
   useEffect(() => {
     camera.position.set(0, PLAYER_HEIGHT, -18);
@@ -66,6 +69,8 @@ export function usePlayer(walls: WallDef[], enabled: boolean) {
     pitch.current = 0;
     targetYaw.current = 0;
     targetPitch.current = 0;
+    headBobPhase.current = 0;
+    headBobIntensity.current = 0;
   }, [camera]);
 
   useEffect(() => {
@@ -83,8 +88,8 @@ export function usePlayer(walls: WallDef[], enabled: boolean) {
     };
     const onMouseMove = (e: MouseEvent) => {
       if (!isLocked.current) return;
-      yaw.current -= e.movementX * 0.002;
-      pitch.current -= e.movementY * 0.002;
+      yaw.current -= e.movementX * 0.0015;
+      pitch.current -= e.movementY * 0.0015;
       pitch.current = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch.current));
     };
     const onClick = () => {
@@ -199,6 +204,8 @@ export function usePlayer(walls: WallDef[], enabled: boolean) {
     const hasTouchInput = touchInput.moveX !== 0 || touchInput.moveZ !== 0;
     const canMove = isLocked.current || hasTouchInput;
 
+    let isMoving = false;
+
     if (canMove) {
       _euler.set(0, targetYaw.current, 0);
       _dir.set(0, 0, 0);
@@ -223,14 +230,29 @@ export function usePlayer(walls: WallDef[], enabled: boolean) {
         targetPos.current.y = PLAYER_HEIGHT;
         const adjusted = checkCollisions(targetPos.current, PLAYER_RADIUS, walls);
         targetPos.current.copy(adjusted);
+        isMoving = true;
       }
     }
 
-    const lerpFactor = 1 - Math.pow(0.001, delta);
-    camera.position.lerp(targetPos.current, lerpFactor);
+    // Head bob
+    const bobSpeed = isMoving ? 8.5 : 0;
+    const bobAmount = isMoving ? 0.035 : 0;
+    headBobIntensity.current += ((isMoving ? 1 : 0) - headBobIntensity.current) * Math.min(1, delta * 6);
+    if (isMoving) {
+      headBobPhase.current += delta * bobSpeed;
+    }
+    const bobY = Math.sin(headBobPhase.current) * bobAmount * headBobIntensity.current;
+    const bobX = Math.cos(headBobPhase.current * 0.5) * bobAmount * 0.3 * headBobIntensity.current;
 
-    yaw.current += (targetYaw.current - yaw.current) * Math.min(1, delta * 25);
-    pitch.current += (targetPitch.current - pitch.current) * Math.min(1, delta * 25);
+    // Smoother camera interpolation
+    const posLerp = 1 - Math.pow(0.0005, delta);
+    camera.position.x += (targetPos.current.x + bobX - camera.position.x) * posLerp;
+    camera.position.y += (targetPos.current.y + bobY - camera.position.y) * posLerp;
+    camera.position.z += (targetPos.current.z - camera.position.z) * posLerp;
+
+    // Smoother rotation
+    yaw.current += (targetYaw.current - yaw.current) * Math.min(1, delta * 30);
+    pitch.current += (targetPitch.current - pitch.current) * Math.min(1, delta * 30);
 
     _euler.set(pitch.current, yaw.current, 0);
     camera.quaternion.setFromEuler(_euler);

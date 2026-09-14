@@ -1,6 +1,6 @@
 import { Suspense, useCallback, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { EffectComposer, SSAO, Bloom, ToneMapping } from '@react-three/postprocessing';
+import { EffectComposer, SSAO, Bloom, ToneMapping, Vignette } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
 import { Scene3D } from '../three/Scene3D';
 import { HUD } from '../components/HUD';
@@ -15,10 +15,24 @@ export function GameView() {
   const gs = useGame();
   const { state } = gs;
   const eventTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wasInDialogue = useRef(false);
 
   const currentObjective = OBJECTIVES[state.timeSlotIndex];
   const objectiveLoc = currentObjective?.location;
   const objectiveNpc = currentObjective?.npc;
+
+  useEffect(() => {
+    if (wasInDialogue.current && !state.inDialogue && !state.showEvent) {
+      const timer = setTimeout(() => {
+        const canvas = document.querySelector('canvas');
+        if (canvas && state.screen === 'game') {
+          canvas.requestPointerLock();
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+    wasInDialogue.current = state.inDialogue || state.showEvent;
+  }, [state.inDialogue, state.showEvent, state.screen]);
 
   const handleNearNPC = useCallback((npc: string | null) => gs.setNearbyNpc(npc), [gs.setNearbyNpc]);
   const handleNearObject = useCallback((obj: string | null, prompt: string | null) => gs.setNearbyObject(obj, prompt), [gs.setNearbyObject]);
@@ -114,8 +128,8 @@ export function GameView() {
         }}
         dpr={[1, 1.5]}
       >
-        <color attach="background" args={['#1a1a2e']} />
-        <fog attach="fog" args={['#1a1a2e', 25, 65]} />
+        <color attach="background" args={['#0d0d1a']} />
+        <fog attach="fog" args={['#0d0d1a', 25, 65]} />
         <Suspense fallback={null}>
           <Scene3D
             timeSlotIndex={state.timeSlotIndex}
@@ -130,18 +144,19 @@ export function GameView() {
         </Suspense>
         <EffectComposer multisampling={4}>
           <SSAO
-            radius={0.4}
-            intensity={25}
-            luminanceInfluence={0.6}
-            color="#1a1a2e"
+            radius={0.5}
+            intensity={30}
+            luminanceInfluence={0.5}
+            color="#0a0a18"
           />
           <Bloom
-            intensity={0.15}
-            luminanceThreshold={0.8}
+            intensity={0.2}
+            luminanceThreshold={0.7}
             luminanceSmoothing={0.9}
             mipmapBlur
           />
           <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+          <Vignette offset={0.3} darkness={0.6} />
         </EffectComposer>
       </Canvas>
 

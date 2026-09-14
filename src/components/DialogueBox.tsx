@@ -12,8 +12,15 @@ interface DialogueBoxProps {
 export function DialogueBox({ lines, step, onResponse, onClose }: DialogueBoxProps) {
   const lastResponseRef = useRef(0);
 
-  if (step >= lines.length) return null;
+  useEffect(() => {
+    if (step >= lines.length && lines.length > 0) {
+      onClose();
+    }
+  }, [step, lines.length, onClose]);
+
+  if (step >= lines.length || lines.length === 0) return null;
   const current = lines[step];
+  if (!current) return null;
   const hasResponses = current.responses && current.responses.length > 0;
   const isLastLine = step >= lines.length - 1 && !hasResponses;
 
