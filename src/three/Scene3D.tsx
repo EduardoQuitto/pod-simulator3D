@@ -37,6 +37,11 @@ function InteractionDetector({
   const { camera } = useThree();
   const keysRef = useRef<Record<string, boolean>>({});
   const lastInteract = useRef(0);
+  const objectiveReachedRef = useRef(false);
+
+  useEffect(() => {
+    objectiveReachedRef.current = false;
+  }, [objectiveLocation, objectiveNpc]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -59,6 +64,7 @@ function InteractionDetector({
   }, [onInteract]);
 
   useFrame(() => {
+    if (!onObjectiveReached) return;
     const pos = camera.position;
     let nearestNPC: { id: string; dist: number } | null = null;
     let nearestObj: { id: string; name: string; dist: number } | null = null;
@@ -84,14 +90,20 @@ function InteractionDetector({
     onNearNPC(nearestNPC?.id || null);
     onNearObject(nearestObj?.id || null, nearestObj ? `[E] ${nearestObj.name}` : null);
 
+    if (objectiveReachedRef.current) return;
+
     if (objectiveLocation) {
       const dx = pos.x - objectiveLocation[0];
       const dz = pos.z - objectiveLocation[2];
-      if (Math.sqrt(dx * dx + dz * dz) < 2.5) onObjectiveReached?.();
+      if (Math.sqrt(dx * dx + dz * dz) < 2.5) {
+        objectiveReachedRef.current = true;
+        onObjectiveReached();
+      }
     }
 
     if (objectiveNpc && nearestNPC?.id === objectiveNpc && nearestNPC.dist < 3.5) {
-      onObjectiveReached?.();
+      objectiveReachedRef.current = true;
+      onObjectiveReached();
     }
   });
 

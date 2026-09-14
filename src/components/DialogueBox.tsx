@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { DialogueLine } from '../types/game';
 
@@ -10,6 +10,8 @@ interface DialogueBoxProps {
 }
 
 export function DialogueBox({ lines, step, onResponse, onClose }: DialogueBoxProps) {
+  const lastResponseRef = useRef(0);
+
   if (step >= lines.length) return null;
   const current = lines[step];
   const hasResponses = current.responses && current.responses.length > 0;
@@ -18,25 +20,35 @@ export function DialogueBox({ lines, step, onResponse, onClose }: DialogueBoxPro
   useEffect(() => {
     if (!hasResponses) return;
     const handleKey = (e: KeyboardEvent) => {
+      if (e.repeat) return;
+      const now = Date.now();
+      if (now - lastResponseRef.current < 500) return;
       const responses = current.responses!;
-      if (e.key === '1' && responses[0]) onResponse(responses[0].effect as Record<string, number>, responses[0].feedback);
-      if (e.key === '2' && responses[1]) onResponse(responses[1].effect as Record<string, number>, responses[1].feedback);
-      if (e.key === '3' && responses[2]) onResponse(responses[2].effect as Record<string, number>, responses[2].feedback);
+      let chosen = false;
+      if (e.key === '1' && responses[0]) { lastResponseRef.current = now; onResponse(responses[0].effect as Record<string, number>, responses[0].feedback); chosen = true; }
+      if (e.key === '2' && responses[1]) { lastResponseRef.current = now; onResponse(responses[1].effect as Record<string, number>, responses[1].feedback); chosen = true; }
+      if (e.key === '3' && responses[2]) { lastResponseRef.current = now; onResponse(responses[2].effect as Record<string, number>, responses[2].feedback); chosen = true; }
+      if (chosen) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
     };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
+    window.addEventListener('keydown', handleKey, true);
+    return () => window.removeEventListener('keydown', handleKey, true);
   }, [step, hasResponses, current, onResponse]);
 
   useEffect(() => {
     if (hasResponses) return;
     const handleKey = (e: KeyboardEvent) => {
+      if (e.repeat) return;
       if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
         e.preventDefault();
+        e.stopPropagation();
         onClose();
       }
     };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
+    window.addEventListener('keydown', handleKey, true);
+    return () => window.removeEventListener('keydown', handleKey, true);
   }, [hasResponses, onClose]);
 
   return (
@@ -49,7 +61,7 @@ export function DialogueBox({ lines, step, onResponse, onClose }: DialogueBoxPro
           {hasResponses && (
             <div className="dialogue-box__responses">
               {current.responses!.map((resp, i) => (
-                <motion.button key={i} className="dialogue-box__response" onClick={() => onResponse(resp.effect as Record<string, number>, resp.feedback)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <motion.button key={i} className="dialogue-box__response" onClick={() => { lastResponseRef.current = Date.now(); onResponse(resp.effect as Record<string, number>, resp.feedback); }} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                   <span className="response-key">{i + 1}</span>
                   {resp.text}
                 </motion.button>

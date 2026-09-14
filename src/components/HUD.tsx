@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Resources, GameStage } from '../types/game';
 import { STAGE_NAMES, TIME_SLOTS } from '../data/school';
+import { touchInput } from '../hooks/usePlayer';
 
 interface HUDProps {
   resources: Resources;
@@ -11,6 +12,7 @@ interface HUDProps {
   interactPrompt: string | null;
   actionFeedback: string | null;
   stoppedAt: string | null;
+  onInteract?: () => void;
 }
 
 function ResourceMini({ icon, value, color, critical }: { icon: string; value: number; color: string; critical?: boolean }) {
@@ -25,9 +27,98 @@ function ResourceMini({ icon, value, color, critical }: { icon: string; value: n
   );
 }
 
-export function HUD({ resources, stage, timeSlotIndex, objective, interactPrompt, actionFeedback, stoppedAt }: HUDProps) {
+function VirtualJoystick() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const knobRef = useRef<HTMLDivElement>(null);
+  const touchIdRef = useRef<number | null>(null);
+  const centerRef = useRef({ x: 0, y: 0 });
+  const maxDist = 40;
+
+  const handleTouch = useCallback((clientX: number, clientY: number) => {
+    const dx = clientX - centerRef.current.x;
+    const dy = clientY - centerRef.current.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const clampedDist = Math.min(dist, maxDist);
+    const angle = Math.atan2(dy, dx);
+    const nx = (clampedDist / maxDist) * Math.cos(angle);
+    const ny = (clampedDist / maxDist) * Math.sin(angle);
+
+    touchInput.moveX = nx;
+    touchInput.moveZ = ny;
+
+    if (knobRef.current) {
+      knobRef.current.style.transform = `translate(${(clampedDist / maxDist) * maxDist * Math.cos(angle)}px, ${(clampedDist / maxDist) * maxDist * Math.sin(angle)}px)`;
+    }
+  }, []);
+
+  const reset = useCallback(() => {
+    touchInput.moveX = 0;
+    touchInput.moveZ = 0;
+    touchIdRef.current = null;
+    if (knobRef.current) {
+      knobRef.current.style.transform = 'translate(0px, 0px)';
+    }
+  }, []);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      touchIdRef.current = t.identifier;
+      const rect = el.getBoundingClientRect();
+      centerRef.current = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      handleTouch(t.clientX, t.clientY);
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.identifier === touchIdRef.current) {
+          handleTouch(t.clientX, t.clientY);
+        }
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === touchIdRef.current) {
+          reset();
+        }
+      }
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: false });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd);
+    el.addEventListener('touchcancel', onTouchEnd);
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [handleTouch, reset]);
+
+  return (
+    <div ref={containerRef} className="touch-joystick">
+      <div ref={knobRef} className="touch-joystick__knob" />
+    </div>
+  );
+}
+
+export function HUD({ resources, stage, timeSlotIndex, objective, interactPrompt, actionFeedback, stoppedAt, onInteract }: HUDProps) {
   const [isLocked, setIsLocked] = useState(!!document.pointerLockElement);
+  const [isMobile, setIsMobile] = useState(false);
   const progress = ((timeSlotIndex + 1) / TIME_SLOTS.length) * 100;
+
+  useEffect(() => {
+    setIsMobile('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
 
   useEffect(() => {
     const onLockChange = () => setIsLocked(!!document.pointerLockElement);
@@ -94,7 +185,7 @@ export function HUD({ resources, stage, timeSlotIndex, objective, interactPrompt
       </AnimatePresence>
 
       <AnimatePresence>
-        {!isLocked && (
+        {!isLocked && !isMobile && (
           <motion.div className="hud__resume" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleResume}>
             <div className="hud__resume-box">
               <span className="hud__resume-icon">🎮</span>
@@ -105,12 +196,33 @@ export function HUD({ resources, stage, timeSlotIndex, objective, interactPrompt
         )}
       </AnimatePresence>
 
-      <div className="hud__controls">
-        <span>WASD</span> andar
-        <span>MOUSE</span> olhar
-        <span>E</span> interagir
-        <span>SHIFT</span> correr
-      </div>
+      {!isMobile && (
+        <div className="hud__controls">
+          <span>WASD</span> andar
+          <span>MOUSE</span> olhar
+          <span>E</span> interagir
+          <span>SHIFT</span> correr
+        </div>
+      )}
+
+      {isMobile && (
+        <div className="touch-controls">
+          <VirtualJoystick />
+          <button
+            className="touch-btn touch-btn--sprint"
+            onTouchStart={() => { touchInput.sprint = true; }}
+            onTouchEnd={() => { touchInput.sprint = false; }}
+          >
+            🏃
+          </button>
+          <button
+            className="touch-btn touch-btn--interact"
+            onTouchStart={() => { if (onInteract) onInteract(); }}
+          >
+            [E]
+          </button>
+        </div>
+      )}
     </div>
   );
 }

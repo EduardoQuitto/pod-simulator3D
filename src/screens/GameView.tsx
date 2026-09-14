@@ -59,10 +59,7 @@ export function GameView() {
 
   const handleObjectiveReached = useCallback(() => {
     gs.completeObjective(`obj-${state.timeSlotIndex}`);
-    const nextIdx = state.timeSlotIndex + 1;
-    if (nextIdx < Object.keys(OBJECTIVES).length) {
-      gs.setObjective(OBJECTIVES[nextIdx]?.text || 'Decida o que fazer');
-    }
+    gs.nextTurn();
   }, [gs, state.timeSlotIndex]);
 
   const handleDialogueResponse = useCallback((effect: Record<string, number>, feedback: string) => {
@@ -129,6 +126,7 @@ export function GameView() {
         interactPrompt={state.interactPrompt}
         actionFeedback={state.actionFeedback}
         stoppedAt={state.stoppedAt}
+        onInteract={handleInteract}
       />
 
       {state.inDialogue && state.dialogueNPC && (

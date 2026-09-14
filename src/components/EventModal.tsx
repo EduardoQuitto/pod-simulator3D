@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { GameEvent } from '../types/game';
 
@@ -10,27 +10,38 @@ interface EventModalProps {
 
 export function EventModal({ event, onChoose, onDismiss }: EventModalProps) {
   const hasChoices = event.choices && event.choices.length > 0;
+  const lastChoiceRef = useRef(0);
 
   useEffect(() => {
     if (!hasChoices) {
       const handleKey = (e: KeyboardEvent) => {
+        if (e.repeat) return;
         if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
           e.preventDefault();
+          e.stopPropagation();
           onDismiss();
         }
       };
-      window.addEventListener('keydown', handleKey);
-      return () => window.removeEventListener('keydown', handleKey);
+      window.addEventListener('keydown', handleKey, true);
+      return () => window.removeEventListener('keydown', handleKey, true);
     }
 
     const handleKey = (e: KeyboardEvent) => {
+      if (e.repeat) return;
+      const now = Date.now();
+      if (now - lastChoiceRef.current < 500) return;
       const choices = event.choices!;
-      if (e.key === '1' && choices[0]) onChoose(choices[0].effect, choices[0].feedback);
-      if (e.key === '2' && choices[1]) onChoose(choices[1].effect, choices[1].feedback);
-      if (e.key === '3' && choices[2]) onChoose(choices[2].effect, choices[2].feedback);
+      let chosen = false;
+      if (e.key === '1' && choices[0]) { lastChoiceRef.current = now; onChoose(choices[0].effect, choices[0].feedback); chosen = true; }
+      if (e.key === '2' && choices[1]) { lastChoiceRef.current = now; onChoose(choices[1].effect, choices[1].feedback); chosen = true; }
+      if (e.key === '3' && choices[2]) { lastChoiceRef.current = now; onChoose(choices[2].effect, choices[2].feedback); chosen = true; }
+      if (chosen) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
     };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
+    window.addEventListener('keydown', handleKey, true);
+    return () => window.removeEventListener('keydown', handleKey, true);
   }, [event, hasChoices, onChoose, onDismiss]);
 
   return (
@@ -44,7 +55,7 @@ export function EventModal({ event, onChoose, onDismiss }: EventModalProps) {
           {hasChoices && (
             <div className="event-card__choices">
               {event.choices!.map((choice, i) => (
-                <motion.button key={i} className="event-card__choice" onClick={() => onChoose(choice.effect, choice.feedback)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <motion.button key={i} className="event-card__choice" onClick={() => { lastChoiceRef.current = Date.now(); onChoose(choice.effect, choice.feedback); }} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                   <span className="response-key">{i + 1}</span>
                   {choice.text}
                 </motion.button>

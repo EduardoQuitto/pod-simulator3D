@@ -1,6 +1,6 @@
 import { useReducer, useCallback } from 'react';
 import type { GameState, Resources, GameStage } from '../types/game';
-import { TIME_SLOTS } from '../data/school';
+import { TIME_SLOTS, OBJECTIVES } from '../data/school';
 import { determineEnding } from '../data/endings';
 
 const INITIAL_RESOURCES: Resources = {
@@ -184,7 +184,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'NEXT_TURN': {
       const next = state.timeSlotIndex + 1;
       if (next >= TIME_SLOTS.length) return { ...state, screen: 'end' };
-      return { ...state, timeSlotIndex: next };
+      const nextObj = OBJECTIVES[next];
+      return {
+        ...state,
+        timeSlotIndex: next,
+        currentObjective: nextObj?.text || 'Decida o que fazer',
+      };
     }
 
     case 'COMPLETE_OBJECTIVE':
