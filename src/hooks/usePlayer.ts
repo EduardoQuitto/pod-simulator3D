@@ -54,12 +54,18 @@ export function usePlayer(walls: WallDef[], enabled: boolean) {
   const yaw = useRef(0);
   const pitch = useRef(0);
   const isLocked = useRef(false);
+  const targetPos = useRef(new THREE.Vector3(0, PLAYER_HEIGHT, -18));
+  const targetYaw = useRef(0);
+  const targetPitch = useRef(0);
 
   useEffect(() => {
     camera.position.set(0, PLAYER_HEIGHT, -18);
+    targetPos.current.set(0, PLAYER_HEIGHT, -18);
     _euler.setFromQuaternion(camera.quaternion);
     yaw.current = 0;
     pitch.current = 0;
+    targetYaw.current = 0;
+    targetPitch.current = 0;
   }, [camera]);
 
   useEffect(() => {
@@ -178,9 +184,9 @@ export function usePlayer(walls: WallDef[], enabled: boolean) {
     if (!enabled) return;
 
     if (touchInput.lookDeltaX || touchInput.lookDeltaY) {
-      yaw.current -= touchInput.lookDeltaX;
-      pitch.current -= touchInput.lookDeltaY;
-      pitch.current = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch.current));
+      targetYaw.current -= touchInput.lookDeltaX;
+      targetPitch.current -= touchInput.lookDeltaY;
+      targetPitch.current = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, targetPitch.current));
       touchInput.lookDeltaX = 0;
       touchInput.lookDeltaY = 0;
     }
@@ -189,33 +195,42 @@ export function usePlayer(walls: WallDef[], enabled: boolean) {
       touchInput.interact = false;
     }
 
-    if (!isLocked.current && touchInput.moveX === 0 && touchInput.moveZ === 0) return;
+    const hasKeyboardInput = keys['KeyW'] || keys['ArrowUp'] || keys['KeyS'] || keys['ArrowDown'] || keys['KeyA'] || keys['ArrowLeft'] || keys['KeyD'] || keys['ArrowRight'];
+    const hasTouchInput = touchInput.moveX !== 0 || touchInput.moveZ !== 0;
+    const canMove = isLocked.current || hasTouchInput;
 
-    _euler.set(0, yaw.current, 0);
-    _dir.set(0, 0, 0);
+    if (canMove) {
+      _euler.set(0, targetYaw.current, 0);
+      _dir.set(0, 0, 0);
 
-    if (keys['KeyW'] || keys['ArrowUp']) _dir.z -= 1;
-    if (keys['KeyS'] || keys['ArrowDown']) _dir.z += 1;
-    if (keys['KeyA'] || keys['ArrowLeft']) _dir.x -= 1;
-    if (keys['KeyD'] || keys['ArrowRight']) _dir.x += 1;
+      if (keys['KeyW'] || keys['ArrowUp']) _dir.z -= 1;
+      if (keys['KeyS'] || keys['ArrowDown']) _dir.z += 1;
+      if (keys['KeyA'] || keys['ArrowLeft']) _dir.x -= 1;
+      if (keys['KeyD'] || keys['ArrowRight']) _dir.x += 1;
 
-    if (touchInput.moveX !== 0 || touchInput.moveZ !== 0) {
-      _dir.x += touchInput.moveX;
-      _dir.z += touchInput.moveZ;
+      if (touchInput.moveX !== 0 || touchInput.moveZ !== 0) {
+        _dir.x += touchInput.moveX;
+        _dir.z += touchInput.moveZ;
+      }
+
+      if (_dir.lengthSq() > 0) {
+        _dir.normalize();
+        _dir.applyEuler(_euler);
+        const isSprinting = keys['ShiftLeft'] || keys['ShiftRight'] || touchInput.sprint;
+        const speed = (isSprinting ? 5.5 : 3) * SPRINT_MULTIPLIER;
+        targetPos.current.x += _dir.x * speed * delta;
+        targetPos.current.z += _dir.z * speed * delta;
+        targetPos.current.y = PLAYER_HEIGHT;
+        const adjusted = checkCollisions(targetPos.current, PLAYER_RADIUS, walls);
+        targetPos.current.copy(adjusted);
+      }
     }
 
-    if (_dir.lengthSq() > 0) {
-      _dir.normalize();
-      _dir.applyEuler(_euler);
-      const isSprinting = keys['ShiftLeft'] || keys['ShiftRight'] || touchInput.sprint;
-      const speed = (isSprinting ? 5.5 : 3) * SPRINT_MULTIPLIER;
-      const newPos = camera.position.clone();
-      newPos.x += _dir.x * speed * delta;
-      newPos.z += _dir.z * speed * delta;
-      newPos.y = PLAYER_HEIGHT;
-      const adjusted = checkCollisions(newPos, PLAYER_RADIUS, walls);
-      camera.position.copy(adjusted);
-    }
+    const lerpFactor = 1 - Math.pow(0.001, delta);
+    camera.position.lerp(targetPos.current, lerpFactor);
+
+    yaw.current += (targetYaw.current - yaw.current) * Math.min(1, delta * 25);
+    pitch.current += (targetPitch.current - pitch.current) * Math.min(1, delta * 25);
 
     _euler.set(pitch.current, yaw.current, 0);
     camera.quaternion.setFromEuler(_euler);

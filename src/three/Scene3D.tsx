@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
+import { Environment } from '@react-three/drei';
 import { SchoolEnvironment } from '../three/SchoolEnvironment';
 import { NPCGroup } from '../three/NPCGroup';
 import { Lighting } from '../three/Lighting';
@@ -125,6 +126,7 @@ export function Scene3D({
   return (
     <>
       <Lighting timeSlotIndex={timeSlotIndex} />
+      <Environment preset="city" environmentIntensity={0.15} />
       <SchoolEnvironment />
       <NPCGroup />
       <InteractionDetector
@@ -135,7 +137,6 @@ export function Scene3D({
         objectiveNpc={objectiveNpc}
         onObjectiveReached={onObjectiveReached}
       />
-      <fog attach="fog" args={['#1a1a2a', 20, 55]} />
     </>
   );
 }

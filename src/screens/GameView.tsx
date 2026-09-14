@@ -1,5 +1,7 @@
 import { Suspense, useCallback, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
+import { EffectComposer, SSAO, Bloom, ToneMapping } from '@react-three/postprocessing';
+import { ToneMappingMode } from 'postprocessing';
 import { Scene3D } from '../three/Scene3D';
 import { HUD } from '../components/HUD';
 import { DialogueBox } from '../components/DialogueBox';
@@ -80,7 +82,6 @@ export function GameView() {
     gs.dismissEvent();
   }, [gs.dismissEvent]);
 
-  // Trigger events randomly during gameplay
   useEffect(() => {
     if (state.screen !== 'game' || state.inDialogue || state.showEvent) return;
     if (eventTimerRef.current) clearTimeout(eventTimerRef.current);
@@ -102,8 +103,19 @@ export function GameView() {
 
   return (
     <div className="game-3d">
-      <Canvas shadows camera={{ fov: 65, near: 0.1, far: 100 }} gl={{ antialias: true }}>
-        <color attach="background" args={['#0a0a12']} />
+      <Canvas
+        shadows
+        camera={{ fov: 60, near: 0.1, far: 120, position: [0, 1.7, -18] }}
+        gl={{
+          antialias: true,
+          toneMapping: 4,
+          toneMappingExposure: 1.0,
+          powerPreference: 'high-performance',
+        }}
+        dpr={[1, 1.5]}
+      >
+        <color attach="background" args={['#1a1a2e']} />
+        <fog attach="fog" args={['#1a1a2e', 25, 65]} />
         <Suspense fallback={null}>
           <Scene3D
             timeSlotIndex={state.timeSlotIndex}
@@ -116,6 +128,21 @@ export function GameView() {
             onObjectiveReached={handleObjectiveReached}
           />
         </Suspense>
+        <EffectComposer multisampling={4}>
+          <SSAO
+            radius={0.4}
+            intensity={25}
+            luminanceInfluence={0.6}
+            color="#1a1a2e"
+          />
+          <Bloom
+            intensity={0.15}
+            luminanceThreshold={0.8}
+            luminanceSmoothing={0.9}
+            mipmapBlur
+          />
+          <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+        </EffectComposer>
       </Canvas>
 
       <HUD

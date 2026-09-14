@@ -117,13 +117,18 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const isPositive = Object.entries(action.effect).some(
         ([k, v]) => (k === 'health' || k === 'energy') && (v ?? 0) > 0
       ) || (action.effect.dependency ?? 0) < 0;
+      const newStep = state.dialogueStep + 1;
+      const reachedEnd = newStep >= state.dialogueLines.length;
       return {
         ...state,
         resources: newRes,
         stage: newStage,
         actionFeedback: action.feedback,
         positiveDecisions: state.positiveDecisions + (isPositive ? 1 : 0),
-        dialogueStep: state.dialogueStep + 1,
+        dialogueStep: newStep,
+        inDialogue: reachedEnd ? false : state.inDialogue,
+        dialogueNPC: reachedEnd ? null : state.dialogueNPC,
+        dialogueLines: reachedEnd ? [] : state.dialogueLines,
       };
     }
 
